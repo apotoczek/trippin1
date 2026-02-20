@@ -2,6 +2,9 @@
 
 Scaffold aligned to the architecture docs: AWS API Gateway + Lambda + Step Functions, with Cognito-based phone OTP auth entrypoints.
 
+Local runbook:
+- `LOCAL_SETUP.md`
+
 ## Project Structure
 
 - `docs/`
@@ -67,33 +70,10 @@ Quick example (develop):
 6. `terraform output api_base_url`
 7. `terraform output signin_url`
 
-## Local HTML + SAM Testing (No Prod)
+## Local Development
 
-1. Start local SAM API with local tools enabled:
-   - `sam local start-api -t infra/template.yaml --parameter-overrides EnableLocalTestTools=true`
-2. Serve static HTML in a second terminal:
-   - `python3 -m http.server 8080 --directory local-ui`
-3. Open:
-   - `http://127.0.0.1:8080`
-
-This local route (`GET /local/trip-preview`) is disabled by default and only created when `EnableLocalTestTools=true`.
-For AWS production deploys, keep `EnableLocalTestTools=false`.
-
-## Local SAM + Debugging (PyCharm)
-
-1. Run preflight:
-   - `python3 tools/preflight_debug.py`
-2. In PyCharm, create `Python Debug Server`:
-   - Host: `localhost`
-   - Port: `5891`
-   - Path mapping (one mapping only): `<repo-root> -> /var/task`
-3. Start SAM with debugger enabled:
-   - `DEBUG=true PYCHARM_DEBUG_HOST=host.docker.internal PYCHARM_DEBUG_PORT=5891 sam local start-api -t infra/template.yaml --parameter-overrides EnableLocalTestTools=true --port 3000`
-4. Hit local endpoint:
-   - `curl "http://127.0.0.1:3000/local/trip-preview?from_address=Seattle,WA&to_address=Portland,OR"`
-
-Smoke test helper:
-- `make test-local PYENV_ENV=<your-pyenv-env>`
+All local run/debug/test instructions are centralized in:
+- `LOCAL_SETUP.md`
 
 ## Next Steps
 
