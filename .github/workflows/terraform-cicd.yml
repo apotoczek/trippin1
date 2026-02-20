@@ -1,0 +1,222 @@
+name: Terraform CI/CD
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-cicd.yml'
+  push:
+    branches:
+      - develop
+      - staging
+      - main
+    paths:
+      - 'terraform/**'
+      - 'src/**'
+      - 'web/signin/**'
+      - '.github/workflows/terraform-cicd.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - develop
+          - staging
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  PROJECT_NAME: ${{ vars.PROJECT_NAME || 'trip-planner' }}
+
+jobs:
+  validate:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive terraform
+
+      - name: Validate develop
+        working-directory: terraform/environments/develop
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Validate staging
+        working-directory: terraform/environments/staging
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Validate prod
+        working-directory: terraform/environments/prod
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+  deploy_develop:
+    name: Deploy develop
+    needs: validate
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/develop') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'develop') }}
+    runs-on: ubuntu-latest
+    environment: develop
+    concurrency: terraform-develop
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform init (develop)
+        working-directory: terraform/environments/develop
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.PROJECT_NAME }}/develop/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform plan (develop)
+        working-directory: terraform/environments/develop
+        run: |
+          terraform plan -input=false -out=tfplan \
+            -var="region=${{ env.AWS_REGION }}" \
+            -var="project_name=${{ env.PROJECT_NAME }}" \
+            -var="env_name=develop" \
+            -var="cognito_user_pool_client_id=${{ secrets.COGNITO_USER_POOL_CLIENT_ID }}"
+
+      - name: Terraform apply (develop)
+        working-directory: terraform/environments/develop
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Output URLs (develop)
+        working-directory: terraform/environments/develop
+        run: |
+          echo "api_base_url=$(terraform output -raw api_base_url)" >> $GITHUB_STEP_SUMMARY
+          echo "signin_url=$(terraform output -raw signin_url)" >> $GITHUB_STEP_SUMMARY
+
+  deploy_staging:
+    name: Deploy staging
+    needs: validate
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/staging') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging') }}
+    runs-on: ubuntu-latest
+    environment: staging
+    concurrency: terraform-staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform init (staging)
+        working-directory: terraform/environments/staging
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.PROJECT_NAME }}/staging/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform plan (staging)
+        working-directory: terraform/environments/staging
+        run: |
+          terraform plan -input=false -out=tfplan \
+            -var="region=${{ env.AWS_REGION }}" \
+            -var="project_name=${{ env.PROJECT_NAME }}" \
+            -var="env_name=staging" \
+            -var="cognito_user_pool_client_id=${{ secrets.COGNITO_USER_POOL_CLIENT_ID }}"
+
+      - name: Terraform apply (staging)
+        working-directory: terraform/environments/staging
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Output URLs (staging)
+        working-directory: terraform/environments/staging
+        run: |
+          echo "api_base_url=$(terraform output -raw api_base_url)" >> $GITHUB_STEP_SUMMARY
+          echo "signin_url=$(terraform output -raw signin_url)" >> $GITHUB_STEP_SUMMARY
+
+  deploy_prod:
+    name: Deploy prod
+    needs: validate
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod') }}
+    runs-on: ubuntu-latest
+    environment: prod
+    concurrency: terraform-prod
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform init (prod)
+        working-directory: terraform/environments/prod
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.PROJECT_NAME }}/prod/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform plan (prod)
+        working-directory: terraform/environments/prod
+        run: |
+          terraform plan -input=false -out=tfplan \
+            -var="region=${{ env.AWS_REGION }}" \
+            -var="project_name=${{ env.PROJECT_NAME }}" \
+            -var="env_name=prod" \
+            -var="cognito_user_pool_client_id=${{ secrets.COGNITO_USER_POOL_CLIENT_ID }}"
+
+      - name: Terraform apply (prod)
+        working-directory: terraform/environments/prod
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Output URLs (prod)
+        working-directory: terraform/environments/prod
+        run: |
+          echo "api_base_url=$(terraform output -raw api_base_url)" >> $GITHUB_STEP_SUMMARY
+          echo "signin_url=$(terraform output -raw signin_url)" >> $GITHUB_STEP_SUMMARY

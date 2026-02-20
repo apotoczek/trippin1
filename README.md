@@ -60,6 +60,7 @@ Use the Terraform scaffolding in `terraform/environments/<env>` to deploy:
 
 Reference guide:
 - `docs/terraform_deploy.md`
+- `docs/cicd_aws_setup.md`
 
 Quick example (develop):
 1. `cp terraform/environments/develop/terraform.tfvars.example terraform/environments/develop/terraform.tfvars`
