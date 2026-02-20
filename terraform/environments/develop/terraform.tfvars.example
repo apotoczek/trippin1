@@ -1,0 +1,6 @@
+region       = "us-east-1"
+project_name = "trip-planner"
+env_name     = "develop"
+
+# Set via shell or CI/CD secret, do not commit real values:
+# export TF_VAR_cognito_user_pool_client_id="<app-client-id>"

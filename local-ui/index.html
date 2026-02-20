@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trip Planner Local Test UI</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <style>
+    :root {
+      --bg: #f4f7f2;
+      --panel: #ffffff;
+      --accent: #1b6a4d;
+      --ink: #1d2a22;
+      --muted: #5a6a61;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at top left, #dfeedd 0, var(--bg) 45%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 8px 25px rgba(30, 55, 41, 0.1);
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    input {
+      border: 1px solid #c7d8cd;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+      color: var(--ink);
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #map {
+      height: 420px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #dce6df;
+    }
+
+    pre {
+      margin: 0;
+      background: #f8fbf8;
+      padding: 12px;
+      border-radius: 10px;
+      overflow: auto;
+      font-size: 12px;
+      border: 1px solid #e2ece4;
+    }
+
+    .help {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 780px) {
+      form { grid-template-columns: 1fr; }
+      button { width: 100%; }
+      #map { height: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel">
+      <h1>Trip Planner Local Test UI</h1>
+      <p class="help">Calls <code>sam local start-api</code> endpoint <code>GET /local/trip-preview</code>. This is local-only test tooling.</p>
+      <form id="tripForm">
+        <label>
+          From Address
+          <input id="fromAddress" value="1 Market St, San Francisco, CA" required />
+        </label>
+        <label>
+          To Address
+          <input id="toAddress" value="1600 Amphitheatre Pkwy, Mountain View, CA" required />
+        </label>
+        <button type="submit">Run Local Trip</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div id="map"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Trip Output</h2>
+      <pre id="output">Run a request to see trip data.</pre>
+    </section>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    const apiBase = "http://127.0.0.1:3000";
+    const output = document.getElementById("output");
+
+    const map = L.map("map").setView([37.5, -122.0], 6);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    let markers = [];
+    let line = null;
+
+    function resetMap() {
+      markers.forEach((m) => map.removeLayer(m));
+      markers = [];
+      if (line) {
+        map.removeLayer(line);
+        line = null;
+      }
+    }
+
+    function drawTrip(data) {
+      resetMap();
+      const origin = [data.origin.lat, data.origin.lng];
+      const destination = [data.destination.lat, data.destination.lng];
+
+      markers.push(L.marker(origin).addTo(map).bindPopup("From"));
+      markers.push(L.marker(destination).addTo(map).bindPopup("To"));
+
+      line = L.polyline([origin, destination], {
+        color: "#1b6a4d",
+        weight: 5,
+        opacity: 0.8
+      }).addTo(map);
+
+      map.fitBounds(line.getBounds(), { padding: [30, 30] });
+    }
+
+    async function runTrip(fromAddress, toAddress) {
+      output.textContent = "Running local trip...";
+
+      const query = new URLSearchParams({
+        from_address: fromAddress,
+        to_address: toAddress
+      });
+      const res = await fetch(`${apiBase}/local/trip-preview?${query.toString()}`);
+
+      const data = await res.json();
+      if (!res.ok) {
+        output.textContent = JSON.stringify(data, null, 2);
+        return;
+      }
+
+      output.textContent = JSON.stringify(data, null, 2);
+      drawTrip(data);
+    }
+
+    document.getElementById("tripForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const fromAddress = document.getElementById("fromAddress").value;
+      const toAddress = document.getElementById("toAddress").value;
+
+      try {
+        await runTrip(fromAddress, toAddress);
+      } catch (error) {
+        output.textContent = JSON.stringify({
+          message: "Request failed. Ensure sam local API is running.",
+          error: String(error)
+        }, null, 2);
+      }
+    });
+  </script>
+</body>
+</html>

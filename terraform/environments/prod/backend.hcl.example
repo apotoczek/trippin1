@@ -1,0 +1,5 @@
+bucket         = "trip-planner-tfstate-prod"
+key            = "trip-planner/prod/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "trip-planner-tf-locks"
+encrypt        = true
