@@ -141,12 +141,13 @@ resource "aws_s3_object" "site_index" {
   content_type = lookup(local.mime_types, ".html", "text/html")
 }
 
-resource "aws_cloudfront_invalidation" "site" {
-  distribution_id = aws_cloudfront_distribution.site.id
-  paths           = ["/*"]
-
+resource "null_resource" "site_invalidation" {
   triggers = {
     site_hash = local.site_hash
+  }
+
+  provisioner "local-exec" {
+    command = "aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.site.id} --paths '/*'"
   }
 
   depends_on = [

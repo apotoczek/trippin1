@@ -10,6 +10,11 @@ docs/
 .pytest_cache/
 .DS_Store
 .aws-sam/
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
 terraform.tfstate
 terraform.tfstate.*
 *.tfstate
