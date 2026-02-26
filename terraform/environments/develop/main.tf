@@ -48,4 +48,17 @@ module "signin_site" {
   project_name = var.project_name
   env_name     = var.env_name
   site_dir     = local.web_dir
+  api_base_url = module.api_auth.api_base_url
+}
+
+module "trip_workflow" {
+  source = "../../modules/trip_workflow"
+
+  project_name           = var.project_name
+  env_name               = var.env_name
+  lambda_zip_path        = data.archive_file.lambda_bundle.output_path
+  lambda_zip_hash        = data.archive_file.lambda_bundle.output_base64sha256
+  http_api_id            = module.api_auth.http_api_id
+  http_api_execution_arn = module.api_auth.http_api_execution_arn
+  log_level              = var.log_level
 }

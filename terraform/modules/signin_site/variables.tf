@@ -9,3 +9,7 @@ variable "env_name" {
 variable "site_dir" {
   type = string
 }
+
+variable "api_base_url" {
+  type = string
+}

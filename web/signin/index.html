@@ -79,15 +79,21 @@
     <input id="phone" placeholder="+15555550123" />
 
     <button id="startOtpBtn">Send OTP</button>
-    <div class="hint">Use the Terraform output `api_base_url` for this field.</div>
+    <div class="hint">Pre-filled from Terraform when deployed. You can override with another `api_base_url`.</div>
     <pre id="output">Awaiting request...</pre>
   </main>
 
   <script>
     const output = document.getElementById("output");
+    const apiBaseUrlInput = document.getElementById("apiBaseUrl");
+    const defaultApiBaseUrl = "__API_BASE_URL__";
+
+    if (defaultApiBaseUrl && !defaultApiBaseUrl.includes("__API_BASE_URL__")) {
+      apiBaseUrlInput.value = defaultApiBaseUrl;
+    }
 
     document.getElementById("startOtpBtn").addEventListener("click", async () => {
-      const baseUrl = document.getElementById("apiBaseUrl").value.trim().replace(/\/$/, "");
+      const baseUrl = apiBaseUrlInput.value.trim().replace(/\/$/, "");
       const phone = document.getElementById("phone").value.trim();
 
       if (!baseUrl || !phone) {

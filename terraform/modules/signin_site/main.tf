@@ -1,6 +1,24 @@
 locals {
   bucket_name = lower(replace("${var.project_name}-${var.env_name}-signin-${random_id.suffix.hex}", "_", "-"))
   files       = fileset(var.site_dir, "**")
+  index_key   = "index.html"
+
+  rendered_index = replace(
+    file("${var.site_dir}/${local.index_key}"),
+    "__API_BASE_URL__",
+    var.api_base_url
+  )
+
+  site_files = {
+    for file in local.files : file => file
+    if !endswith(file, "/") && file != local.index_key
+  }
+
+  site_file_hashes = [
+    for file in sort(keys(local.site_files)) : filemd5("${var.site_dir}/${file}")
+  ]
+
+  site_hash = md5(join("", concat([md5(local.rendered_index)], local.site_file_hashes)))
 
   mime_types = {
     ".html" = "text/html"
@@ -47,6 +65,7 @@ resource "aws_cloudfront_origin_access_control" "site" {
 
 resource "aws_cloudfront_distribution" "site" {
   enabled             = true
+  wait_for_deployment = false
   default_root_object = "index.html"
 
   origin {
@@ -105,11 +124,33 @@ resource "aws_s3_bucket_policy" "site" {
 }
 
 resource "aws_s3_object" "site_files" {
-  for_each = { for file in local.files : file => file if !endswith(file, "/") }
+  for_each = local.site_files
 
   bucket       = aws_s3_bucket.site.id
   key          = each.value
   source       = "${var.site_dir}/${each.value}"
   etag         = filemd5("${var.site_dir}/${each.value}")
   content_type = lookup(local.mime_types, regex("\\.[^.]+$", each.value), "application/octet-stream")
+}
+
+resource "aws_s3_object" "site_index" {
+  bucket       = aws_s3_bucket.site.id
+  key          = local.index_key
+  content      = local.rendered_index
+  etag         = md5(local.rendered_index)
+  content_type = lookup(local.mime_types, ".html", "text/html")
+}
+
+resource "aws_cloudfront_invalidation" "site" {
+  distribution_id = aws_cloudfront_distribution.site.id
+  paths           = ["/*"]
+
+  triggers = {
+    site_hash = local.site_hash
+  }
+
+  depends_on = [
+    aws_s3_object.site_index,
+    aws_s3_object.site_files,
+  ]
 }

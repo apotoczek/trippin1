@@ -1,15 +1,12 @@
 # Trip Planner Project
 
-Scaffold aligned to the architecture docs: AWS API Gateway + Lambda + Step Functions, with Cognito-based phone OTP auth entrypoints.
+Scaffold aligned to AWS API Gateway + Lambda + Step Functions, with Cognito-based phone OTP auth entrypoints.
 
 Local runbook:
 - `LOCAL_SETUP.md`
 
 ## Project Structure
 
-- `docs/`
-  - `architecture.md`
-  - `chat_history.md`
 - `infra/template.yaml`
   - AWS SAM template for API, auth lambdas, trip workflow lambdas, DynamoDB table, and Step Functions state machine
 - `terraform/`
@@ -57,10 +54,6 @@ This scaffold assumes a Cognito User Pool App Client configured for `CUSTOM_AUTH
 Use the Terraform scaffolding in `terraform/environments/<env>` to deploy:
 1. API Gateway HTTP API + Lambda (`POST /auth/start`) with AWS HTTPS endpoint.
 2. HTTPS sign-in page via CloudFront.
-
-Reference guide:
-- `docs/terraform_deploy.md`
-- `docs/cicd_aws_setup.md`
 
 Quick example (develop):
 1. `cp terraform/environments/develop/terraform.tfvars.example terraform/environments/develop/terraform.tfvars`

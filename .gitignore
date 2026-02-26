@@ -5,6 +5,8 @@ __pycache__/
 .env.*
 !.env.example
 !env/examples/.env.*.example
+LOCAL_WORK_LOG.md
+docs/
 .pytest_cache/
 .DS_Store
 .aws-sam/
