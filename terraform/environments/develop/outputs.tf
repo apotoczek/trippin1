@@ -25,3 +25,15 @@ output "signin_url" {
 output "signin_bucket_name" {
   value = module.signin_site.bucket_name
 }
+
+output "cognito_define_auth_challenge_arn" {
+  value = module.api_auth.cognito_define_auth_challenge_arn
+}
+
+output "cognito_create_auth_challenge_arn" {
+  value = module.api_auth.cognito_create_auth_challenge_arn
+}
+
+output "cognito_verify_auth_challenge_arn" {
+  value = module.api_auth.cognito_verify_auth_challenge_arn
+}

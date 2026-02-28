@@ -1,6 +1,11 @@
 region       = "us-east-1"
 project_name = "trip-planner"
 env_name     = "develop"
+cognito_user_pool_id = "us-east-1_example"
+
+# Optional dev-only: static OTP and SMS disable
+# otp_static_code = "123456"
+# otp_disable_sms = true
 
 # Set via shell or CI/CD secret, do not commit real values:
 # export TF_VAR_cognito_user_pool_client_id="<app-client-id>"

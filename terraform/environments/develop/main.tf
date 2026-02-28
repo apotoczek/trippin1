@@ -39,7 +39,10 @@ module "api_auth" {
   lambda_zip_path             = data.archive_file.lambda_bundle.output_path
   lambda_zip_hash             = data.archive_file.lambda_bundle.output_base64sha256
   cognito_user_pool_client_id = var.cognito_user_pool_client_id
+  cognito_user_pool_id        = var.cognito_user_pool_id
   log_level                   = var.log_level
+  otp_static_code             = var.otp_static_code
+  otp_disable_sms             = var.otp_disable_sms
 }
 
 module "signin_site" {
